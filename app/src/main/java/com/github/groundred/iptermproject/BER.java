@@ -1,5 +1,10 @@
 package com.github.groundred.iptermproject;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.List;
+
 public class BER {
 
     // BER : Type + Length + value
@@ -8,27 +13,26 @@ public class BER {
     // Tag class(2bit) + P/C (1bit) + Tag Number(5bit)
 
     // Tag class
-    public static final byte UNIVERSAL          = 0;             // 00 00 0000
-    public static final byte APPLICATION        = 1<<6;             // 01 00 0000
-    public static final byte CONTEXT_SPECIFIC   = (byte) (2<<6);    // 10 00 0000
-    public static final byte PRIVATE            = (byte) (3<<6);    // 11 00 0000
+    public static final byte UNIVERSAL = 0;             // 00 00 0000
+    public static final byte APPLICATION = 1 << 6;             // 01 00 0000
+    public static final byte CONTEXT_SPECIFIC = (byte) (2 << 6);    // 10 00 0000
+    public static final byte PRIVATE = (byte) (3 << 6);    // 11 00 0000
 
     // Primitive & Constructed
     // Primitive   : The contents octets directly encode the element value.
     // Constructed : The contents octets contain 0, 1, or more element encodings.
-    public static final byte PRIMITIVE      = 0; // 00 0 0000
-    public static final byte CONSTRUCTOR    = 1<<5; // 00 1 0000
+    public static final byte PRIMITIVE = 0; // 00 0 0000
+    public static final byte CONSTRUCTOR = 1 << 5; // 00 1 0000
 
     // Tag Number
-    public static final byte BOOLEAN        = UNIVERSAL|PRIMITIVE|1; // 00 00 0001
-    public static final byte INTEGER        = UNIVERSAL|PRIMITIVE|2; // 00 00 0010
-    public static final byte BITSTRING      = UNIVERSAL|PRIMITIVE|3; // 00 00 0011
-    public static final byte OCTETSTRING    = UNIVERSAL|PRIMITIVE|4; // 00 00 0100
-    public static final byte NULL           = UNIVERSAL|PRIMITIVE|5; // 00 00 0101
-    public static final byte OID            = UNIVERSAL|PRIMITIVE|6; // 00 00 0110
-    public static final byte SEQUENCE       = UNIVERSAL|CONSTRUCTOR|10; // 00 10 1010
-    public static final byte IP_ADDRESS     = APPLICATION|PRIMITIVE|0;
-
+    public static final byte BOOLEAN = UNIVERSAL | PRIMITIVE | 1; // 00 00 0001
+    public static final byte INTEGER = UNIVERSAL | PRIMITIVE | 2; // 00 00 0010
+    public static final byte BITSTRING = UNIVERSAL | PRIMITIVE | 3; // 00 00 0011
+    public static final byte OCTETSTRING = UNIVERSAL | PRIMITIVE | 4; // 00 00 0100
+    public static final byte NULL = UNIVERSAL | PRIMITIVE | 5; // 00 00 0101
+    public static final byte OID = UNIVERSAL | PRIMITIVE | 6; // 00 00 0110
+    public static final byte SEQUENCE = UNIVERSAL | CONSTRUCTOR | 10; // 00 10 1010
+    public static final byte IP_ADDRESS = APPLICATION | PRIMITIVE | 0;
 
 
     // BER Length
@@ -42,9 +46,7 @@ public class BER {
     // 0xFFFF   ~   0xFFFFFF    : 0x83
 
     public static final byte SHORT_LENGTH = 0;
-    public static final byte LONG_LENGTH = (byte) (1<<7);
-
-
+    public static final byte LONG_LENGTH = (byte) (1 << 7);
 
 
     public static byte[] encodeInteger(byte type, int integer) throws IllegalArgumentException {
@@ -54,7 +56,7 @@ public class BER {
         int offset = 0;
 
         // get Integer byte size
-        while( (((integer & mask) == 0) || ((integer & mask) == mask)) && (intSize > 1) ) {
+        while ((((integer & mask) == 0) || ((integer & mask) == mask)) && (intSize > 1)) {
             intSize--;
             integer <<= 8;
         }
@@ -63,7 +65,7 @@ public class BER {
             throw new IllegalArgumentException("BER encode error: INTEGER too long.");
         }
 
-        byte[] encodedInteger = new byte[1+1+intSize]; // type (1byte) + BER Length(1) + IntegerSize (byte)
+        byte[] encodedInteger = new byte[1 + 1 + intSize]; // type (1byte) + BER Length(1) + IntegerSize (byte)
 
         //insert type, Length
         encodedInteger[offset++] = type;
@@ -86,13 +88,70 @@ public class BER {
         int length = string.length;
         int BERLengthSize = calcBERLengthSize(length);
         byte[] encodeBERLength = encodeLength(BERLengthSize, length);
-        byte[] encodeString = new byte[1+encodeBERLength.length+string.length];
+        byte[] encodeString = new byte[1 + encodeBERLength.length + string.length];
 
-        System.arraycopy(type,0,encodeString,0,1);
-        System.arraycopy(encodeBERLength,0,encodeString,1,encodeBERLength.length+1);
-        System.arraycopy(string,0,encodeString,encodeBERLength.length+1,encodeBERLength.length+string.length+1);
+        System.arraycopy(type, 0, encodeString, 0, 1);
+        System.arraycopy(encodeBERLength, 0, encodeString, 1, encodeBERLength.length + 1);
+        System.arraycopy(string, 0, encodeString, encodeBERLength.length + 1, encodeBERLength.length + string.length + 1);
 
         return encodeString;
+    }
+
+    public static byte[] encodeOID(byte type, int[] oid) throws IllegalArgumentException {
+
+        int length = oid.length;
+        List<Long> oidList = new ArrayList<>();
+
+        if (oid[0] >= 0 && oid[0] <=2) {
+            long firstEncodedOID = oid[0]*40 + oid[1];
+            oidList.add((firstEncodedOID&0xff));
+        } else {
+            throw new IllegalArgumentException("Wrong OID");
+        }
+
+        // 7bit 씩 잘라서 Encoding
+        for (int i = 2; i < length-2 ; i++) {
+            long id = oid[i]&0xFFFFFFFFL;
+            if (id < 128) {
+                oidList.add((id&0xFF));
+            }else {
+                long mask = 127L; // 0x7F 0111 1111
+                List<Long> tmpList = new ArrayList<>();
+
+                while( (id&mask) !=0) {
+                    tmpList.add(0,(id&mask)|0x80);
+                    id>>=7;
+                }
+
+                long lastId = tmpList.get(tmpList.size() - 1)|0xf7L;
+                tmpList.set(tmpList.size()-1, lastId);
+
+                oidList.addAll(tmpList);
+
+            }
+        }
+
+        // convert long to byte
+        byte[] bytesOID = new byte[oidList.size()];
+        for (int i = 0 ; i < oidList.size();i++) {
+            bytesOID[i] = oidList.get(i).byteValue();
+        }
+
+
+        // creat OID encoding array
+        length = oidList.size();
+        int BERLengthSize = calcBERLengthSize(length);
+        byte[] encodeBERLength = encodeLength(BERLengthSize, length);
+        byte[] encodedOID= new byte[1 + encodeBERLength.length + bytesOID.length];
+
+        System.arraycopy(type, 0, encodedOID, 0, 1);
+        System.arraycopy(encodeBERLength, 0, encodedOID, 1, encodeBERLength.length + 1);
+        System.arraycopy(bytesOID, 0, encodedOID, encodeBERLength.length + 1, encodeBERLength.length + bytesOID.length + 1);
+
+
+
+        return encodedOID;
+
     }
 
 
@@ -101,38 +160,37 @@ public class BER {
 
         byte[] lengthEncoded = new byte[BERLengthSize];
 
-        if (length < 0){
-            lengthEncoded[0] = (byte)0x84;
-            lengthEncoded[1] = (byte) ((length>>24)&0xFF);
-            lengthEncoded[2] = (byte) ((length>>16)&0xFF);
-            lengthEncoded[3] = (byte) ((length>>8)&0xFF);
-            lengthEncoded[4] = (byte) (length&0xFF);
+        if (length < 0) {
+            lengthEncoded[0] = (byte) 0x84;
+            lengthEncoded[1] = (byte) ((length >> 24) & 0xFF);
+            lengthEncoded[2] = (byte) ((length >> 16) & 0xFF);
+            lengthEncoded[3] = (byte) ((length >> 8) & 0xFF);
+            lengthEncoded[4] = (byte) (length & 0xFF);
             return lengthEncoded;
-        }
-        else if (length <= 127) {
-            lengthEncoded[0] = (byte)length;
+        } else if (length <= 127) {
+            lengthEncoded[0] = (byte) length;
             return lengthEncoded;
         } else if (length <= 0xFF) {
-            lengthEncoded[0] = (byte)0x81;
-            lengthEncoded[1] = (byte)length;
+            lengthEncoded[0] = (byte) 0x81;
+            lengthEncoded[1] = (byte) length;
             return lengthEncoded;
         } else if (length <= 0xFFFF) {
-            lengthEncoded[0] = (byte)0x82;
-            lengthEncoded[1] = (byte) ((length>>8)&0xFF);
-            lengthEncoded[2] = (byte) (length&0xFF);
+            lengthEncoded[0] = (byte) 0x82;
+            lengthEncoded[1] = (byte) ((length >> 8) & 0xFF);
+            lengthEncoded[2] = (byte) (length & 0xFF);
             return lengthEncoded;
         } else if (length <= 0xFFFFFF) {
-            lengthEncoded[0] = (byte)0x83;
-            lengthEncoded[1] = (byte) ((length>>16)&0xFF);
-            lengthEncoded[2] = (byte) ((length>>8)&0xFF);
-            lengthEncoded[3] = (byte) (length&0xFF);
+            lengthEncoded[0] = (byte) 0x83;
+            lengthEncoded[1] = (byte) ((length >> 16) & 0xFF);
+            lengthEncoded[2] = (byte) ((length >> 8) & 0xFF);
+            lengthEncoded[3] = (byte) (length & 0xFF);
             return lengthEncoded;
         } else {
-            lengthEncoded[0] = (byte)0x84;
-            lengthEncoded[1] = (byte) ((length>>24)&0xFF);
-            lengthEncoded[2] = (byte) ((length>>16)&0xFF);
-            lengthEncoded[3] = (byte) ((length>>8)&0xFF);
-            lengthEncoded[4] = (byte) (length&0xFF);
+            lengthEncoded[0] = (byte) 0x84;
+            lengthEncoded[1] = (byte) ((length >> 24) & 0xFF);
+            lengthEncoded[2] = (byte) ((length >> 16) & 0xFF);
+            lengthEncoded[3] = (byte) ((length >> 8) & 0xFF);
+            lengthEncoded[4] = (byte) (length & 0xFF);
             return lengthEncoded;
         }
     }
@@ -141,15 +199,14 @@ public class BER {
     private static int calcBERLengthSize(int length) {
         if (length < 0) {
             return 5;
-        }
-        else if (length <= 127) {
+        } else if (length <= 127) {
             return 1;
         } else if (length <= 0xFF) {
             return 2;
         } else if (length <= 0xFFFF) {
             return 3;
         } else if (length <= 0xFFFFFF) {
-            return  4;
+            return 4;
         }
 
         return 5;
@@ -157,10 +214,10 @@ public class BER {
 
     public static byte[] integerToByteArray(int value) {
         byte[] byteArray = new byte[4];
-        byteArray[0] = (byte)(value >> 24);
-        byteArray[1] = (byte)(value >> 16);
-        byteArray[2] = (byte)(value >> 8);
-        byteArray[3] = (byte)(value);
+        byteArray[0] = (byte) (value >> 24);
+        byteArray[1] = (byte) (value >> 16);
+        byteArray[2] = (byte) (value >> 8);
+        byteArray[3] = (byte) (value);
         return byteArray;
     }
 
