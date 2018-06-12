@@ -1,15 +1,15 @@
 package com.github.groundred.iptermproject;
 
-import static com.github.groundred.iptermproject.BER.CONSTRUCTOR;
-import static com.github.groundred.iptermproject.BER.CONTEXT_SPECIFIC;
+
+import com.github.groundred.iptermproject.ber.BER;
 
 public class PDU {
 
     // PDU type (4 byte)
-    public static final int GET_REQUEST    = CONTEXT_SPECIFIC|CONSTRUCTOR|0;
-    public static final int GET_NEXT_REQUEST  = CONTEXT_SPECIFIC|CONSTRUCTOR|1;
-    public static final int GET_RESPONSE   = CONTEXT_SPECIFIC|CONSTRUCTOR|2;
-    public static final int SET_REQUEST    = CONTEXT_SPECIFIC|CONSTRUCTOR|3;
+    public static final int GET_REQUEST    = BER.ASN_CONTEXT|BER.ASN_CONSTRUCTOR|0;
+    public static final int GET_NEXT_REQUEST  = BER.ASN_CONTEXT|BER.ASN_CONSTRUCTOR|1;
+    public static final int GET_RESPONSE   = BER.ASN_CONTEXT|BER.ASN_CONSTRUCTOR|2;
+    public static final int SET_REQUEST    = BER.ASN_CONTEXT|BER.ASN_CONSTRUCTOR|3;
 
     //PDU Error Status (4 byte)
 
