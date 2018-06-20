@@ -579,6 +579,22 @@ public class BER {
         }
     }
 
+    public static int getBERIntegerLength(Integer value) {
+        if ((value <   0x80) &&
+                (value >= -0x80)) {
+            return 3;
+        }
+        else if ((value <   0x8000) &&
+                (value >= -0x8000)) {
+            return 4;
+        }
+        else if ((value <   0x800000) &&
+                (value >= -0x800000)) {
+            return 5;
+        }
+        return 6;
+    }
+
     /**
      * Encode an ASN.1 octet string filled with the supplied input string.
      * @param os

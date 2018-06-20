@@ -9,26 +9,27 @@ import java.io.OutputStream;
 public class OctetString {
 
     private byte type = BER.OCTETSTRING;
-    private byte[] community = new byte[0];
+    private String community;
     private byte[] encodedCommunity;
 
-    OutputStream os = new BEROutputStream();
-
     public OctetString() {
-
     }
 
     public OctetString(String communityString) {
-        this.community = communityString.getBytes();
+        this.community = communityString;
+        this.encodedCommunity = communityString.getBytes();
     }
 
 
-    public byte[] encodeBER() throws IOException {
-       BER.encodeString(os, type,encodedCommunity);
-       return encodedCommunity;
+    public void encodeBER(OutputStream os) throws IOException {
+       BER.encodeString(os, type, encodedCommunity);
     }
 
-    public byte[] getCommunity() {
+    public int getBERLength() {
+        int length = encodedCommunity.length + BER.getBERLengthOfLength(encodedCommunity.length) + 1;
+        return length;
+    }
+    public String getCommunity() {
         return community;
     }
 }
