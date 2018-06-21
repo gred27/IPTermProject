@@ -3,21 +3,27 @@ package com.github.groundred.iptermproject;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.AsyncTask;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.PointerIcon;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import com.github.groundred.iptermproject.ber.BERInputStream;
 import com.github.groundred.iptermproject.ber.BEROutputStream;
 
+import java.io.FileWriter;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.SocketTimeoutException;
+import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -67,21 +73,37 @@ public class MainActivity extends AppCompatActivity {
 
         btnSendGetRequest.setOnClickListener((View v) -> {
                     MyAsynTask mAsynTask = new MyAsynTask();
-                    mAsynTask.execute(etGetRequest.getText().toString());
+                    mAsynTask.execute(String.valueOf(PDU.GET_REQUEST), etGetRequest.getText().toString(), community);
                 }
         );
+
+        btnSendSetRequest.setOnClickListener((View v) -> {
+            MyAsynTask myAsynTask = new MyAsynTask();
+            myAsynTask.execute(String.valueOf(PDU.SET_REQUEST), etGetRequest.getText().toString(), writeCommunity);
+        });
+
+        btnSendWalkRequest.setOnClickListener(v -> {
+            MyAsynTask myAsynTask = new MyAsynTask();
+            myAsynTask.execute(String.valueOf(PDU.GET_NEXT_REQUEST), "1.3.6.1.2.1.1.1.0", community);
+        });
     }
 
     @SuppressLint("LongLogTag")
-    private void sendSnmpRequest(String cmd) throws Exception {
+    private void sendSnmpRequest(int type, String cmd, String community) throws Exception {
         try {
 
             InetAddress serverAddr = InetAddress.getByName(address);
             int trapRcvPort = Integer.parseInt(port);
 
             PDU pdu = new PDU();
-            pdu.addVariableBinding(new VariableBinding(new OID(cmd)));
-            pdu.setType(PDU.GET_REQUEST);
+            if (type == PDU.SET_REQUEST) {
+                Variable v = checkInputType(etSetRequest.getText().toString());
+                pdu.addVariableBinding(new VariableBinding(new OID(cmd), v));
+            } else if (type == PDU.GET_REQUEST) {
+                pdu.addVariableBinding(new VariableBinding(new OID(cmd)));
+            }
+
+            pdu.setType(type);
 
             CommunityMessage communityMessage = new CommunityMessage(community, pdu);
 
@@ -121,16 +143,30 @@ public class MainActivity extends AppCompatActivity {
 
                 String massage = new String(packet.getData());
                 byte[] messageByte = packet.getData();
-                byte[] mbyte;
-                mbyte = packet.getData();
+                ByteBuffer inputBuffer = ByteBuffer.wrap(messageByte);
+                BERInputStream inputStream = new BERInputStream(inputBuffer);
+
+                CommunityMessage responseMessage = new CommunityMessage();
+                responseMessage.decodePacket(inputStream, messageByte);
+
+                List<VariableBinding> vbs = responseMessage.getPdu().getVariableBindings();
 
                 StringBuilder tmp = new StringBuilder();
 
-                for (byte b : mbyte
+                for (VariableBinding vb : vbs
                         ) {
-
-                    tmp.append(Integer.toHexString(b)).append(" ");
+                    tmp.append(vb.getOid().toString() + " " + vb.getVariable().toString() + "\n");
                 }
+
+
+                logResult.append(tmp.toString());
+//                for (byte b : messageByte
+//                        ) {
+//
+//                    tmp.append(Integer.toHexString(b)).append(" ");
+//                }
+//                tvLog.setText(tmp.toString());
+
                 Log.d("message", massage);
                 Log.d("byte", messageByte.toString());
                 Log.d("byte", tmp.toString());
@@ -140,8 +176,7 @@ public class MainActivity extends AppCompatActivity {
                 dataSocket.close();
             }
 
-
-//            tvLog.setText(massage);
+            dataSocket.close();
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -149,17 +184,149 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    public class MyAsynTask extends AsyncTask<String, Void, Void> {
+    @SuppressLint("LongLogTag")
+    private void sendSnmpWalkRequest(int type, String cmd, String community) throws Exception {
+        try {
+            String vbType = null;
+            InetAddress serverAddr = InetAddress.getByName(address);
+            int trapRcvPort = Integer.parseInt(port);
+
+            do {
+                PDU pdu = new PDU();
+                pdu.addVariableBinding(new VariableBinding(new OID(cmd)));
+                pdu.setType(type);
+
+                CommunityMessage communityMessage = new CommunityMessage(community, pdu);
+
+                BEROutputStream berOutputStream = new BEROutputStream();
+                communityMessage.makeSendPacket(berOutputStream);
+
+                byte[] sendData = berOutputStream.getBuffer().array();
+                DatagramPacket dataPacket = new DatagramPacket(sendData, sendData.length, serverAddr, trapRcvPort);
+
+                // Send trap.
+                DatagramSocket dataSocket = new DatagramSocket();
+                dataSocket.send(dataPacket);
+
+                try {
+                    byte[] message = new byte[8000];
+                    DatagramPacket packet = new DatagramPacket(message, message.length);
+                    Log.i("UDP client: ", "about to wait to receive");
+
+                    dataSocket.setSoTimeout(10000);
+                    dataSocket.receive(packet);
+                    String text = new String(message, 0, packet.getLength());
+                    Log.d("Received text", text);
+
+                    byte[] messageByte = packet.getData();
+                    ByteBuffer inputBuffer = ByteBuffer.wrap(messageByte);
+                    BERInputStream inputStream = new BERInputStream(inputBuffer);
+
+                    CommunityMessage responseMessage = new CommunityMessage();
+                    responseMessage.decodePacket(inputStream, messageByte);
+
+                    List<VariableBinding> vbs = responseMessage.getPdu().getVariableBindings();
+
+                    StringBuilder tmp = new StringBuilder();
+
+                    for (VariableBinding vb : vbs
+                            ) {
+                        tmp.append("oid :" + vb.getOid().toString() + " " + vb.getVariable().toString() + "\n");
+                    }
+
+
+                    logResult.append(tmp.toString());
+
+//                    tvWalkLog.setText(tmp);
+
+
+//                    for (byte b : messageByte
+//                            ) {
+//
+//                        tmp.append(Integer.toHexString(b)).append(" ");
+//                    }
+
+//                    tvLog.setText(tmp.toString());
+
+                    Log.d("byte", messageByte.toString());
+                    Log.d("result", tmp.toString());
+
+                    cmd = vbs.get(0).getOid().toString();
+                    vbType = vbs.get(0).getVariable().variableType;
+
+                } catch (IOException e) {
+                    Log.e(" UDP client has IOException", "error: ", e);
+                    dataSocket.close();
+                }
+
+                dataSocket.close();
+
+
+            } while (!vbType.equals("endOfMibView"));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    public class MyAsynTask extends AsyncTask<String, Void, Integer> {
 
         @Override
-        protected Void doInBackground(String... strings) {
+        protected Integer doInBackground(String... strings) {
             try {
-                sendSnmpRequest(strings[0]);
+                if (Integer.parseInt(strings[0]) == PDU.GET_NEXT_REQUEST) {
+                    sendSnmpWalkRequest(Integer.parseInt(strings[0]), strings[1], strings[2]);
+                } else {
+                    sendSnmpRequest(Integer.parseInt(strings[0]), strings[1], strings[2]);
+                }
             } catch (Exception e) {
                 Log.d(TAG,
                         "Error sending snmp request - Error: " + e.getMessage());
             }
-            return null;
+            return Integer.parseInt(strings[0]);
         }
+
+        @Override
+        protected void onPostExecute(Integer aInt) {
+            super.onPostExecute(aInt);
+            if (aInt == PDU.GET_NEXT_REQUEST) {
+                tvWalkLog.setText(logResult.toString().substring(0, 1000));
+                try {
+                    FileWriter fw = new FileWriter("snmpwalklog.txt", false);
+                    fw.write(tvWalkLog.toString());
+                    fw.flush();
+                    fw.close();
+
+                    logResult.setLength(0);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            } else {
+                tvLog.setText(logResult.toString());
+                logResult.setLength(0);
+            }
+        }
+    }
+
+
+    public Variable checkInputType(String input) {
+        Pattern pInt = Pattern.compile("(^[0-9]*$)");
+        Pattern pOID = Pattern.compile(("^([1-9][0-9]{0,3}|0)(\\.([1-9][0-9]{0,3}|0)){5,13}$"));
+
+        Matcher m1 = pInt.matcher(input);
+        Matcher m2 = pOID.matcher(input);
+
+        int i;
+        OID oid;
+
+        if (m1.find()) {
+            i = Integer.parseInt(input);
+            return new Variable(i);
+        } else if (m2.find()){
+            oid = new OID(input);
+            return new Variable(oid);
+        }
+
+        return new Variable(input);
     }
 }

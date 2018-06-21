@@ -1,11 +1,17 @@
 package com.github.groundred.iptermproject;
 
+import android.util.Log;
+
 import com.github.groundred.iptermproject.ber.BER;
+import com.github.groundred.iptermproject.ber.BERInputStream;
 import com.github.groundred.iptermproject.ber.BEROutputStream;
 
+import java.io.IOError;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+
+import static android.os.Build.ID;
 
 // community-Based SNMP Version2 Message Format
 public class CommunityMessage {
@@ -50,6 +56,38 @@ public class CommunityMessage {
 
     }
 
+    public void decodePacket(BERInputStream is, byte[] packet) throws IOException {
+        BER.MutableByte mutableByte = new BER.MutableByte();
+        int totalLength = BER.decodeHeader(is,mutableByte);
+
+        if (mutableByte.getValue() != BER.SEQUENCE) {
+            Log.e("Error","not Sequence");
+            throw new IOException();
+        }
+
+        //get Version
+        int version = BER.decodeInteger(is,mutableByte);
+        if(mutableByte.getValue() != BER.INTEGER) {
+            Log.e("Error","not Integer");
+            throw new IOException();
+        }
+        this.version = version;
+
+        //get Community
+        OctetString community = new OctetString();
+        community.decodeBER(is);
+        this.community = community;
+
+        //get PDU
+        PDU pdu = new PDU();
+        pdu.decodeBER(is);
+
+        this.pdu = pdu;
+
+    }
 
 
+    public PDU getPdu() {
+        return pdu;
+    }
 }

@@ -2,14 +2,17 @@ package com.github.groundred.iptermproject;
 
 
 import com.github.groundred.iptermproject.ber.BER;
+import com.github.groundred.iptermproject.ber.BERInputStream;
+import com.github.groundred.iptermproject.ber.BERSerializable;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.Vector;
 
-public class PDU {
+public class PDU implements BERSerializable {
 
     // PDU type (4 byte)
     public static final int GET_REQUEST = BER.ASN_CONTEXT | BER.ASN_CONSTRUCTOR | 0;
@@ -58,6 +61,7 @@ public class PDU {
         variableBindings.add(vb);
     }
 
+    @Override
     public void encodeBER(OutputStream os) throws IOException {
         BER.encodeHeader(os, type, getBERLengthPDU());
 
@@ -77,11 +81,45 @@ public class PDU {
     }
 
     // length for all PDU with type, length
+    @Override
     public int getBERLength() {
         int length = getBERLengthPDU();
         length += BER.getBERLengthOfLength(length) + 1;
 
         return length;
+    }
+
+    @Override
+    public int getBERPayloadLength() {
+        return getBERLengthPDU();
+    }
+
+    @Override
+    public void decodeBER(BERInputStream inputStream) throws IOException {
+        BER.MutableByte mutableByte = new BER.MutableByte();
+        int length = BER.decodeHeader(inputStream, mutableByte);
+        int pduStartPos = (int) inputStream.getPosition();
+
+        this.type = mutableByte.getValue();
+
+        mutableByte = new BER.MutableByte();
+        request_Id = BER.decodeInteger(inputStream,mutableByte);
+        error_status = BER.decodeInteger(inputStream,mutableByte);
+        error_Index = BER.decodeInteger(inputStream,mutableByte);
+
+
+        mutableByte = new BER.MutableByte();
+        int variabelBindingLength = BER.decodeHeader(inputStream, mutableByte);
+
+        int variableStartPos = (int) inputStream.getPosition();
+        variableBindings = new ArrayList<VariableBinding>();
+
+        while (inputStream.getPosition() - variableStartPos < variabelBindingLength) {
+            VariableBinding vb = new VariableBinding();
+            vb.decodeBER(inputStream);
+            variableBindings.add(vb);
+        }
+
     }
 
     // length for PDU
@@ -107,5 +145,9 @@ public class PDU {
 
     public void setType(int type) {
         this.type = type;
+    }
+
+    public List<VariableBinding> getVariableBindings() {
+        return variableBindings;
     }
 }
