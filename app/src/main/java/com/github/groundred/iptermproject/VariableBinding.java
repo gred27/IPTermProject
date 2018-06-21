@@ -7,7 +7,7 @@ import com.github.groundred.iptermproject.ber.BERSerializable;
 import java.io.IOException;
 import java.io.OutputStream;
 
-public class VariableBinding implements BERSerializable{
+public class VariableBinding implements BERSerializable {
     private OID oid;
     private Variable variable;
 

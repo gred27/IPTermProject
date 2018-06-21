@@ -20,8 +20,8 @@ package com.github.groundred.iptermproject.ber;
   _##
   _##########################################################################*/
 
-import java.io.OutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.math.BigInteger;
 
 /**

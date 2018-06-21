@@ -9,7 +9,7 @@ import com.github.groundred.iptermproject.ber.BERSerializable;
 import java.io.IOException;
 import java.io.OutputStream;
 
-public class OID implements BERSerializable{
+public class OID implements BERSerializable {
 
     private String oid;
     private int[] OIDArray = new int[0];
@@ -17,7 +17,7 @@ public class OID implements BERSerializable{
     public OID() {
     }
 
-    public OID(String oid){
+    public OID(String oid) {
         this.oid = oid;
         OIDArray = parseOID(oid);
     }
@@ -60,8 +60,8 @@ public class OID implements BERSerializable{
         this.OIDArray = decodedOID;
 
         StringBuilder tmp = new StringBuilder();
-        for (int i:OIDArray
-             ) {
+        for (int i : OIDArray
+                ) {
             tmp.append(".").append(i);
         }
         tmp.deleteCharAt(0);

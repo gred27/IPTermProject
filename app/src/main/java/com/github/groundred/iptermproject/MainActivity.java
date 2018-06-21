@@ -6,7 +6,6 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import android.view.PointerIcon;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -70,7 +69,6 @@ public class MainActivity extends AppCompatActivity {
         tvWalkLog = (TextView) findViewById(R.id.tv_getWalkResult);
 
         // set onClick listener
-
         btnSendGetRequest.setOnClickListener((View v) -> {
                     MyAsynTask mAsynTask = new MyAsynTask();
                     mAsynTask.execute(String.valueOf(PDU.GET_REQUEST), etGetRequest.getText().toString(), community);
@@ -88,13 +86,16 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    //Send GETRequest and Set Request
     @SuppressLint("LongLogTag")
     private void sendSnmpRequest(int type, String cmd, String community) throws Exception {
         try {
 
+            // IP 주소, Port 설정
             InetAddress serverAddr = InetAddress.getByName(address);
             int trapRcvPort = Integer.parseInt(port);
 
+            // PDU 생성해서 VariableBinding 입력
             PDU pdu = new PDU();
             if (type == PDU.SET_REQUEST) {
                 Variable v = checkInputType(etSetRequest.getText().toString());
@@ -102,7 +103,7 @@ public class MainActivity extends AppCompatActivity {
             } else if (type == PDU.GET_REQUEST) {
                 pdu.addVariableBinding(new VariableBinding(new OID(cmd)));
             }
-
+            // PDU type 설정
             pdu.setType(type);
 
             CommunityMessage communityMessage = new CommunityMessage(community, pdu);
@@ -112,19 +113,6 @@ public class MainActivity extends AppCompatActivity {
 
             byte[] sendData = berOutputStream.getBuffer().array();
 
-//            byte sendData[] = {(byte) 0x30, (byte) 0x2b, // Sequence type, Length from here: 98 byte.
-//                    (byte) 0x02, (byte) 0x01, (byte) 0x01, // v2c
-//                    (byte) 0x04, (byte) 0x06, (byte) 0x70, (byte) 0x75,
-//                    (byte) 0x62, (byte) 0x6c, (byte) 0x69, (byte) 0x63,
-//                    (byte) 0xa0, (byte) 0x1e, (byte) 0x02, (byte) 0x04,
-//                    (byte) 0x0f, (byte) 0xb1, (byte) 0x41, (byte) 0x0a,
-//                    (byte) 0x02, (byte) 0x01, (byte) 0x00, (byte) 0x02,
-//                    (byte) 0x01, (byte) 0x00, (byte) 0x30, (byte) 0x10,
-//                    (byte) 0x30, (byte) 0x0e, (byte) 0x06, (byte) 0x0a,
-//                    (byte) 0x2b, (byte) 0x06, (byte) 0x01, (byte) 0x02,
-//                    (byte) 0x01, (byte) 0x02, (byte) 0x02, (byte) 0x01,
-//                    (byte) 0x07, (byte) 0x01, (byte) 0x05, (byte) 0x00
-//            };
             DatagramPacket dataPacket = new DatagramPacket(sendData, sendData.length, serverAddr, trapRcvPort);
 
             // Send trap.
@@ -160,12 +148,6 @@ public class MainActivity extends AppCompatActivity {
 
 
                 logResult.append(tmp.toString());
-//                for (byte b : messageByte
-//                        ) {
-//
-//                    tmp.append(Integer.toHexString(b)).append(" ");
-//                }
-//                tvLog.setText(tmp.toString());
 
                 Log.d("message", massage);
                 Log.d("byte", messageByte.toString());
@@ -184,6 +166,7 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    // SNMP WALK
     @SuppressLint("LongLogTag")
     private void sendSnmpWalkRequest(int type, String cmd, String community) throws Exception {
         try {
@@ -191,6 +174,9 @@ public class MainActivity extends AppCompatActivity {
             InetAddress serverAddr = InetAddress.getByName(address);
             int trapRcvPort = Integer.parseInt(port);
 
+            // Response의 Variable Binding의 OID를 다음 Request 메세지의 OID로 설정해 GetRequest를 계속 보냄
+            // End of Mib View 메세지가 도착할 때 까지 반복
+            // 각 메세지 별로 0.5초의 텀을 둠
             do {
                 PDU pdu = new PDU();
                 pdu.addVariableBinding(new VariableBinding(new OID(cmd)));
@@ -204,7 +190,6 @@ public class MainActivity extends AppCompatActivity {
                 byte[] sendData = berOutputStream.getBuffer().array();
                 DatagramPacket dataPacket = new DatagramPacket(sendData, sendData.length, serverAddr, trapRcvPort);
 
-                // Send trap.
                 DatagramSocket dataSocket = new DatagramSocket();
                 dataSocket.send(dataPacket);
 
@@ -237,22 +222,17 @@ public class MainActivity extends AppCompatActivity {
 
                     logResult.append(tmp.toString());
 
-//                    tvWalkLog.setText(tmp);
-
-
-//                    for (byte b : messageByte
-//                            ) {
-//
-//                        tmp.append(Integer.toHexString(b)).append(" ");
-//                    }
-
-//                    tvLog.setText(tmp.toString());
 
                     Log.d("byte", messageByte.toString());
                     Log.d("result", tmp.toString());
 
                     cmd = vbs.get(0).getOid().toString();
                     vbType = vbs.get(0).getVariable().variableType;
+
+
+                    inputStream.close();
+                    berOutputStream.flush();
+                    berOutputStream.close();
 
                 } catch (IOException e) {
                     Log.e(" UDP client has IOException", "error: ", e);
@@ -261,7 +241,7 @@ public class MainActivity extends AppCompatActivity {
 
                 dataSocket.close();
 
-
+                Thread.sleep(500);
             } while (!vbType.equals("endOfMibView"));
         } catch (Exception e) {
             e.printStackTrace();
@@ -269,6 +249,8 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+
+    // 통신을 위한 Thread 생성
     public class MyAsynTask extends AsyncTask<String, Void, Integer> {
 
         @Override
@@ -309,6 +291,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+    // generic으로 선언된 Variable의 타입을 Regex를 사용해 체크
     public Variable checkInputType(String input) {
         Pattern pInt = Pattern.compile("(^[0-9]*$)");
         Pattern pOID = Pattern.compile(("^([1-9][0-9]{0,3}|0)(\\.([1-9][0-9]{0,3}|0)){5,13}$"));
@@ -322,7 +305,7 @@ public class MainActivity extends AppCompatActivity {
         if (m1.find()) {
             i = Integer.parseInt(input);
             return new Variable(i);
-        } else if (m2.find()){
+        } else if (m2.find()) {
             oid = new OID(input);
             return new Variable(oid);
         }

@@ -4,7 +4,6 @@ import android.util.Log;
 
 import com.github.groundred.iptermproject.ber.BER;
 import com.github.groundred.iptermproject.ber.BERInputStream;
-import com.github.groundred.iptermproject.ber.BEROutputStream;
 import com.github.groundred.iptermproject.ber.BERSerializable;
 
 import java.io.IOException;
@@ -27,7 +26,7 @@ public class OctetString implements BERSerializable {
 
 
     public void encodeBER(OutputStream os) throws IOException {
-       BER.encodeString(os, type, encodedCommunity);
+        BER.encodeString(os, type, encodedCommunity);
     }
 
     public int getBERLength() {
@@ -45,22 +44,15 @@ public class OctetString implements BERSerializable {
         BER.MutableByte type = new BER.MutableByte();
         byte[] tmpStringByte = BER.decodeString(is, type);
         if (type.getValue() != BER.OCTETSTRING) {
-            Log.e("Error","not String");
+            Log.e("Error", "not String");
             throw new IOException();
         }
         encodedCommunity = tmpStringByte;
         community = new String(tmpStringByte, StandardCharsets.UTF_8);
     }
 
-    public String getCommunity() {
+    @Override
+    public String toString() {
         return community;
-    }
-
-    public byte[] getEncodedCommunity() {
-        return encodedCommunity;
-    }
-
-    public void setEncodedCommunity(byte[] encodedCommunity) {
-        this.encodedCommunity = encodedCommunity;
     }
 }

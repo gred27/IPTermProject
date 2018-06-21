@@ -10,7 +10,6 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.Vector;
 
 public class PDU implements BERSerializable {
 
@@ -103,9 +102,9 @@ public class PDU implements BERSerializable {
         this.type = mutableByte.getValue();
 
         mutableByte = new BER.MutableByte();
-        request_Id = BER.decodeInteger(inputStream,mutableByte);
-        error_status = BER.decodeInteger(inputStream,mutableByte);
-        error_Index = BER.decodeInteger(inputStream,mutableByte);
+        request_Id = BER.decodeInteger(inputStream, mutableByte);
+        error_status = BER.decodeInteger(inputStream, mutableByte);
+        error_Index = BER.decodeInteger(inputStream, mutableByte);
 
 
         mutableByte = new BER.MutableByte();

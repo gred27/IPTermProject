@@ -4,9 +4,7 @@ import com.github.groundred.iptermproject.ber.BER;
 import com.github.groundred.iptermproject.ber.BERInputStream;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
-import java.math.BigInteger;
 
 public class Variable<T> {
     T variable;
@@ -17,8 +15,8 @@ public class Variable<T> {
     }
 
     public void encodeBER(OutputStream os) throws IOException {
-        if(variable instanceof String) {
-            if(variable.equals("NULL")) {
+        if (variable instanceof String) {
+            if (variable.equals("NULL")) {
                 os.write(BER.NULL);
                 os.write(0);
             }
@@ -32,9 +30,9 @@ public class Variable<T> {
         }
     }
 
-    public int getBERLength(){
-        if(variable instanceof String) {
-            if(variable.equals("NULL")) {
+    public int getBERLength() {
+        if (variable instanceof String) {
+            if (variable.equals("NULL")) {
                 return 2;
             }
         } else if (variable instanceof OID) {
@@ -51,51 +49,51 @@ public class Variable<T> {
     public void decodeBER(BERInputStream is) throws IOException {
         is.mark((int) is.getPosition());
         BER.MutableByte type = new BER.MutableByte();
-        int length2 = BER.decodeHeader(is,type);
+        int length2 = BER.decodeHeader(is, type);
 
         is.reset();
 
         switch (type.getValue()) {
             case BER.INTEGER:
-                variableType="INTEGER";
+                variableType = "INTEGER";
                 Integer tmp = BER.decodeInteger(is, type);
                 variable = (T) tmp;
                 break;
             case BER.COUNTER:
-                variableType="COUNTER";
+                variableType = "COUNTER";
                 Integer tmp1 = BER.decodeInteger(is, type);
                 variable = (T) tmp1;
                 break;
             case BER.GAUGE:
-                variableType="GAUGE";
-                Integer tmp2 = BER.decodeInteger(is, type);
+                variableType = "GAUGE";
+                Long tmp2 = BER.decodeUnsignedInteger(is, type);
                 variable = (T) tmp2;
                 break;
             case BER.TIMETICKS:
-                variableType="TIMETICK";
+                variableType = "TIMETICK";
                 Integer tmp3 = BER.decodeInteger(is, type);
                 variable = (T) tmp3;
                 break;
             case BER.OCTETSTRING:
-                variableType="OCTETSTRING";
+                variableType = "OCTETSTRING";
                 OctetString oct = new OctetString();
                 oct.decodeBER(is);
                 variable = (T) oct;
                 break;
             case BER.NULL:
-                variableType="NULL";
-                BER.decodeNull(is,type);
+                variableType = "NULL";
+                BER.decodeNull(is, type);
                 variable = (T) "Null";
                 break;
             case BER.OID:
-                variableType="OID";
+                variableType = "OID";
                 OID oid = new OID();
                 oid.decodeBER(is);
                 variable = (T) oid;
                 break;
             case (byte) BER.ENDOFMIBVIEW:
-                variableType="endOfMibView";
-                BER.decodeNull(is,type);
+                variableType = "endOfMibView";
+                BER.decodeNull(is, type);
                 variable = (T) "END";
             default:
                 break;
@@ -105,6 +103,6 @@ public class Variable<T> {
 
     @Override
     public String toString() {
-        return variableType + ":" + variable;
+        return variableType + ":" + variable.toString();
     }
 }
