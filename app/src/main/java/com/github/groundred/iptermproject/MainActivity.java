@@ -35,7 +35,6 @@ public class MainActivity extends AppCompatActivity {
 
     private EditText etGetRequest;
     private EditText etSetRequest;
-    private EditText etWalkRequest;
 
     private StringBuffer logResult = new StringBuffer();
     private TextView tvLog;
@@ -43,9 +42,6 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String address = "kuwiden.iptime.org";
     private static final String port = "11161";
-
-    private static String OIDVALUE;
-    private static final int SNMP_VERSION = CommunityMessage.version2c;
 
     private static String community = "public";
     private static String writeCommunity = "write";
@@ -106,29 +102,34 @@ public class MainActivity extends AppCompatActivity {
             // PDU type 설정
             pdu.setType(type);
 
+            //Community message 생성
             CommunityMessage communityMessage = new CommunityMessage(community, pdu);
 
+            //BER Encoding
             BEROutputStream berOutputStream = new BEROutputStream();
             communityMessage.makeSendPacket(berOutputStream);
 
             byte[] sendData = berOutputStream.getBuffer().array();
-
             DatagramPacket dataPacket = new DatagramPacket(sendData, sendData.length, serverAddr, trapRcvPort);
 
-            // Send trap.
+            // Send Request
             DatagramSocket dataSocket = new DatagramSocket();
             dataSocket.send(dataPacket);
 
+
+            //Receive Response
             try {
                 byte[] message = new byte[8000];
                 DatagramPacket packet = new DatagramPacket(message, message.length);
                 Log.i("UDP client: ", "about to wait to receive");
 
+                //10초 타임아웃 , 메세지 수신 대기
                 dataSocket.setSoTimeout(10000);
                 dataSocket.receive(packet);
                 String text = new String(message, 0, packet.getLength());
                 Log.d("Received text", text);
 
+                // 수신 메세지 Decoding
                 String massage = new String(packet.getData());
                 byte[] messageByte = packet.getData();
                 ByteBuffer inputBuffer = ByteBuffer.wrap(messageByte);
@@ -139,8 +140,9 @@ public class MainActivity extends AppCompatActivity {
 
                 List<VariableBinding> vbs = responseMessage.getPdu().getVariableBindings();
 
-                StringBuilder tmp = new StringBuilder();
 
+                // UI Thread에 보낼 String 저장
+                StringBuilder tmp = new StringBuilder();
                 for (VariableBinding vb : vbs
                         ) {
                     tmp.append(vb.getOid().toString() + " " + vb.getVariable().toString() + "\n");

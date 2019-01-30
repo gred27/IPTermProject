@@ -14,6 +14,7 @@ public class Variable<T> {
         this.variable = variable;
     }
 
+    //Variable 타입을 확인해 인코딩
     public void encodeBER(OutputStream os) throws IOException {
         if (variable instanceof String) {
             if (variable.equals("NULL")) {
@@ -29,6 +30,7 @@ public class Variable<T> {
             ((OctetString) variable).encodeBER(os);
         }
     }
+
 
     public int getBERLength() {
         if (variable instanceof String) {
@@ -46,6 +48,8 @@ public class Variable<T> {
         return -1;
     }
 
+    // Variable 타입을 확인헤 디코딩
+    // Type과 값을 저장
     public void decodeBER(BERInputStream is) throws IOException {
         is.mark((int) is.getPosition());
         BER.MutableByte type = new BER.MutableByte();

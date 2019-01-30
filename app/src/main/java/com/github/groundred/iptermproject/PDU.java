@@ -1,6 +1,8 @@
 package com.github.groundred.iptermproject;
 
 
+import android.util.Log;
+
 import com.github.groundred.iptermproject.ber.BER;
 import com.github.groundred.iptermproject.ber.BERInputStream;
 import com.github.groundred.iptermproject.ber.BERSerializable;
@@ -105,6 +107,68 @@ public class PDU implements BERSerializable {
         request_Id = BER.decodeInteger(inputStream, mutableByte);
         error_status = BER.decodeInteger(inputStream, mutableByte);
         error_Index = BER.decodeInteger(inputStream, mutableByte);
+
+        if (error_status != 0) {
+            switch (error_status) {
+                case TOO_BIG:
+                    Log.e("PDU error", "Too Big");
+                    break;
+                case NO_SUCH_NAME:
+                    Log.e("PDU error", "No Such Name");
+                    break;
+                case BAD_VALUE:
+                    Log.e("PDU error", "Bad Value");
+                    break;
+                case READ_ONLY:
+                    Log.e("PDU error", "Read Only");
+                    break;
+                case GENERAL_ERROR:
+                    Log.e("PDU error", "General Error");
+                    break;
+                case NO_ACCESS:
+                    Log.e("PDU error", "No Access");
+                    break;
+                case WRONG_TYPE:
+                    Log.e("PDU error", "Wrong Type");
+                    break;
+                case WRONG_LENGTH:
+                    Log.e("PDU error", "Wrong Length");
+                    break;
+                case WRONG_ENCODING:
+                    Log.e("PDU error", "Wrong Encoding");
+                    break;
+                case WRONG_VALUE:
+                    Log.e("PDU error", "Wrong Value");
+                    break;
+                case NO_CREATION:
+                    Log.e("PDU error", "No Creation");
+                    break;
+                case INCONSISTENT_VALUE:
+                    Log.e("PDU error", "Inconsistent Value");
+                    break;
+                case RESOURCE_UNAVAILABLE:
+                    Log.e("PDU error", "Resource Unavailable");
+                    break;
+                case COMMIT_FAILED:
+                    Log.e("PDU error", "Commit Fail");
+                    break;
+                case UNDO_FAILED:
+                    Log.e("PDU error", "Undo Failed");
+                    break;
+                case AUTHORIZATION_ERROR:
+                    Log.e("PDU error", "Authorization Error");
+                    break;
+                case NOT_WRITABLE:
+                    Log.e("PDU error", "Not Writable");
+                    break;
+                case INCONSISTENT_NAME:
+                    Log.e("PDU error", "Inconsistent Name");
+                    break;
+                default:
+                    break;
+
+            }
+        }
 
 
         mutableByte = new BER.MutableByte();
